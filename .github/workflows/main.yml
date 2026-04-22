@@ -13,14 +13,20 @@ jobs:
 
       - name: Unzip and Organize Files
         run: |
+          # 1. فك الضغط (أياً كان اسم الملف Kk)
           unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
-          if [ ! -f "project.godot" ]; then
-            SUB_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
-            if [ -n "$SUB_DIR" ] && [ "$SUB_DIR" != "." ]; then
-              mv "$SUB_DIR"/* ./
+          
+          # 2. البحث عن ملف project.godot ونقل كل شيء لمكانه الصحيح
+          PROJECT_FILE=$(find . -name "project.godot" | head -n 1)
+          if [ -n "$PROJECT_FILE" ]; then
+            PROJECT_DIR=$(dirname "$PROJECT_FILE")
+            if [ "$PROJECT_DIR" != "." ]; then
+              mv "$PROJECT_DIR"/* ./
             fi
           fi
-          ls -F
+          
+          # 3. إظهار الملفات في الـ Log لنعرف أين المشكلة لو فشل
+          ls -R
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -68,9 +74,11 @@ jobs:
       - name: Build APK
         run: |
           mkdir -p build
-          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
+          # استخدام --verbose لمعرفة سبب الخطأ الحقيقي
+          ./Godot_v3.5.3-stable_linux_headless.64 --verbose --export "Android" build/game.apk
 
       - name: Upload APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: game-apk
