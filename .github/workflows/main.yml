@@ -1,4 +1,4 @@
-name: Build Android APK (Godot 4)
+name: Build Android APK (Godot 4 Fixed)
 
 on:
   push:
@@ -29,54 +29,52 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Download Godot 4
+      - name: Download Godot 4.3
         run: |
-          # تحميل إصدار جودو 4.3 المخصص للينكس (Headless)
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
           unzip -q Godot_v4.3-stable_linux.x86_64.zip
           mv Godot_v4.3-stable_linux.x86_64 godot4
+          chmod +x godot4
 
-      - name: Download Export Templates (Godot 4)
+      - name: Download Export Templates
         run: |
           mkdir -p ~/.local/share/godot/export_templates/4.3.stable
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
           unzip -q Godot_v4.3-stable_export_templates.tpz
-          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
+          mv templates/* ~/.local/share/godot/templates/4.3.stable/
 
-      - name: Create Export Presets (Godot 4 Format)
+      - name: Prepare Android Keystore
         run: |
-          cat > export_presets.cfg << 'EOF'
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999
+
+      - name: Create Export Presets
+        run: |
+          cat > export_presets.cfg << EOF
           [preset.0]
           name="Android"
           platform="Android"
           runnable=true
-          dedicated_server=false
-          custom_features=""
           export_filter="all_resources"
-          include_filter=""
-          exclude_filter=""
           export_path="build/game.apk"
           [preset.0.options]
-          custom_template/debug=""
-          custom_template/release=""
           package/unique_name="com.mj69077.gamealfajr"
           package/name="Game Alfajr"
           architecture/armeabi-v7a=true
           architecture/arm64-v8a=true
-          architecture/x86=false
-          architecture/x86_64=false
-          keystore/debug=""
-          keystore/debug_user=""
-          keystore/debug_password=""
-          keystore/release=""
-          keystore/release_user=""
-          keystore/release_password=""
+          keystore/debug="$(pwd)/debug.keystore"
+          keystore/debug_user="androiddebugkey"
+          keystore/debug_password="android"
           EOF
 
-      - name: Build APK (Godot 4)
+      - name: Import Assets (Fix Errors)
         run: |
-          # في جودو 4، نستخدم --export-release وتمرير مسار الـ SDK عبر البيئة
-          ./godot4 --headless --export-release "Android" build/game.apk --display-driver headless --env "ANDROID_HOME=$ANDROID_HOME"
+          # فتح المحرك وقفله بسرعة عشان يعمل Re-import للملفات البايظة
+          ./godot4 --headless --editor --quit --display-driver headless || true
+
+      - name: Build APK
+        run: |
+          # محاولة البناء النهائية
+          ./godot4 --headless --export-release "Android" build/game.apk --display-driver headless
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
