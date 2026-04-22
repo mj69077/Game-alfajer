@@ -1,4 +1,4 @@
-name: Build Android APK (Godot 4 Final Fix)
+name: Build Android APK (Godot 4 Complete Fix)
 
 on:
   push:
@@ -11,16 +11,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Move
+      - name: Unzip and Cleanup Folders
         run: |
-          unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
-          PROJECT_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
-          if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
+          # 1. فك الضغط في مجلد مؤقت
+          unzip -o Kk.zip -d temp_files || unzip -o Kk -d temp_files || true
+          
+          # 2. البحث عن ملف المشروع ونقل محتوياته فقط (بدون المجلد الفرعي)
+          PROJECT_DIR=$(find temp_files -name "project.godot" -printf '%h\n' | head -n 1)
+          if [ -n "$PROJECT_DIR" ]; then
             cp -r "$PROJECT_DIR"/* ./
           fi
+          
+          # 3. حذف المجلدات الزائدة عشان جودو ميتلخبطش
+          rm -rf temp_files Pixel-Platformer-master
           mkdir -p build
 
-      - name: Setup Java
+      - name: Setup Java & Android SDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -29,43 +35,50 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Download Godot 4.3
+      - name: Download Godot & Templates
         run: |
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
           unzip -q Godot_v4.3-stable_linux.x86_64.zip
           mv Godot_v4.3-stable_linux.x86_64 godot4
           chmod +x godot4
-
-      - name: Download Export Templates
-        run: |
-          # إنشاء المسار الصحيح تماماً لـ Godot 4
+          
           mkdir -p ~/.local/share/godot/export_templates/4.3.stable
           wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
           unzip -q Godot_v4.3-stable_export_templates.tpz
-          # نقل المحتويات للمجلد الذي أنشأناه بالأعلى
           mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
 
-      - name: Prepare Android Keystore
+      - name: Create Debug Keystore
         run: |
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999
 
-      - name: Create Export Presets
+      - name: Create Perfect Export Presets
         run: |
           cat > export_presets.cfg << EOF
           [preset.0]
           name="Android"
           platform="Android"
           runnable=true
+          dedicated_server=false
+          custom_features=""
           export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
           export_path="build/game.apk"
           [preset.0.options]
+          custom_template/debug=""
+          custom_template/release=""
           package/unique_name="com.mj69077.gamealfajr"
           package/name="Game Alfajr"
           architecture/armeabi-v7a=true
           architecture/arm64-v8a=true
+          architecture/x86=false
+          architecture/x86_64=false
           keystore/debug="$(pwd)/debug.keystore"
           keystore/debug_user="androiddebugkey"
           keystore/debug_password="android"
+          keystore/release=""
+          keystore/release_user=""
+          keystore/release_password=""
           EOF
 
       - name: Import Assets
