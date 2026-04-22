@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK (Emergency Recovery)
 
 on:
   push:
@@ -11,17 +11,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Cleanup
+      - name: Ultimate Cleanup & Path Fix
         run: |
           unzip -o Kk.zip -d temp_files || unzip -o Kk -d temp_files || true
           PROJECT_DIR=$(find temp_files -name "project.godot" -printf '%h\n' | head -n 1)
-          if [ -n "$PROJECT_DIR" ]; then
-            cp -r "$PROJECT_DIR"/* ./
-          fi
+          cp -r "$PROJECT_DIR"/* ./
           rm -rf temp_files Pixel-Platformer-master
+          # حذف أي ملفات إعدادات قديمة ممكن تسبب تعارض
+          rm -f export_presets.cfg .godot/extension_list.cfg
           mkdir -p build
 
-      - name: Setup Java
+      - name: Auto-Fix Code (3 to 4 Bridge)
+        run: |
+          # مسح تعريف velocity المتكرر
+          find . -name "*.gd" -exec sed -i '/var velocity/d' {} +
+          # تحديث دوال الحركة المشهورة لو كانت قديمة
+          find . -name "*.gd" -exec sed -i 's/move_and_slide(velocity)/move_and_slide()/g' {} +
+          echo "Code partially patched."
+
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -30,32 +38,28 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Download Godot 3.5.3
+      - name: Install Godot 4.3 & Templates
         run: |
-          wget -q https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_linux_headless.64.zip
-          unzip -q Godot_v3.5.3-stable_linux_headless.64.zip
-          mv Godot_v3.5.3-stable_linux_headless.64 godot3
-          chmod +x godot3
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q Godot_v4.3-stable_linux.x86_64.zip
+          mv Godot_v4.3-stable_linux.x86_64 godot4
+          chmod +x godot4
+          mkdir -p ~/.local/share/godot/export_templates/4.3.stable
+          wget -q https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_export_templates.tpz
+          unzip -q Godot_v4.3-stable_export_templates.tpz
+          mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
 
-      - name: Download Export Templates
-        run: |
-          mkdir -p ~/.local/share/godot/templates/3.5.3.stable
-          wget -q https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_export_templates.tpz
-          unzip -q Godot_v3.5.3-stable_export_templates.tpz
-          mv templates/* ~/.local/share/godot/templates/3.5.3.stable/
-
-      - name: Prepare Keystore and Settings
+      - name: Force Editor Config
         run: |
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999
           mkdir -p ~/.config/godot/
-          cat > ~/.config/godot/editor_settings.3 << EOF
-          export/android/android_sdk_path = "$ANDROID_HOME"
-          export/android/debug_keystore = "$(pwd)/debug.keystore"
-          export/android/debug_keystore_user = "androiddebugkey"
-          export/android/debug_keystore_pass = "android"
-          EOF
+          # ملف الإعدادات بصيغة Godot 4 الصارمة
+          echo 'export/android/android_sdk_path = "'$ANDROID_HOME'"' > ~/.config/godot/editor_settings-4.tre
+          echo 'export/android/debug_keystore = "'$(pwd)'/debug.keystore"' >> ~/.config/godot/editor_settings-4.tre
+          echo 'export/android/debug_keystore_user = "androiddebugkey"' >> ~/.config/godot/editor_settings-4.tre
+          echo 'export/android/debug_keystore_pass = "android"' >> ~/.config/godot/editor_settings-4.tre
 
-      - name: Create Export Presets
+      - name: Fresh Export Presets
         run: |
           cat > export_presets.cfg << EOF
           [preset.0]
@@ -63,6 +67,8 @@ jobs:
           platform="Android"
           runnable=true
           export_filter="all_resources"
+          include_filter=""
+          exclude_filter=""
           export_path="build/game.apk"
           [preset.0.options]
           package/unique_name="com.mj69077.gamealfajr"
@@ -74,11 +80,14 @@ jobs:
           keystore/debug_password="android"
           EOF
 
-      - name: Build APK
+      - name: The Big Build
         run: |
-          ./godot3 --export "Android" build/game.apk
+          # محاولة استيراد الملفات (عشان ملفات الصوت اللي بتبوظ)
+          ./godot4 --headless --editor --quit --display-driver headless || true
+          # التصدير النهائي
+          ./godot4 --headless --export-release "Android" build/game.apk --display-driver headless
 
-      - name: Upload APK
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: game-apk
