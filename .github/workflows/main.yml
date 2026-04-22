@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4 # تحديث للإصدار v4
+        uses: actions/checkout@v4
 
       - name: Unzip and Organize Files
         run: |
@@ -23,13 +23,13 @@ jobs:
           ls -F
 
       - name: Setup Java
-        uses: actions/setup-java@v4 # تحديث للإصدار v4
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3 # تحديث للإصدار v3
+        uses: android-actions/setup-android@v3
 
       - name: Download Godot
         run: |
@@ -60,6 +60,21 @@ jobs:
           [preset.0.options]
           custom_package/debug=""
           custom_package/release=""
+          package/unique_name="com.sg3.pixelplatformer"
+          package/name="Pixel Platformer"
+          package/signed=false
+          EOF
+
+      - name: Build APK
+        run: |
+          mkdir -p build
+          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-apk
+          path: build/game.apk
           package/unique_name="com.sg3.pixelplatformer"
           package/name="Pixel Platformer"
           package/signed=false
