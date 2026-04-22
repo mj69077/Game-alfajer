@@ -1,4 +1,4 @@
-name: Build Android APK (Back to Godot 3.5.3 Stable)
+name: Build Android APK
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 11 # جودو 3 يفضل جافا 11
+          java-version: 11
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -37,21 +37,17 @@ jobs:
           mv Godot_v3.5.3-stable_linux_headless.64 godot3
           chmod +x godot3
 
-      - name: Download Export Templates (Godot 3)
+      - name: Download Export Templates
         run: |
           mkdir -p ~/.local/share/godot/templates/3.5.3.stable
           wget -q https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_export_templates.tpz
           unzip -q Godot_v3.5.3-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/templates/3.5.3.stable/
 
-      - name: Prepare Android Keystore
+      - name: Prepare Keystore and Settings
         run: |
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999
-
-      - name: Configure Godot 3 Editor Settings
-        run: |
           mkdir -p ~/.config/godot/
-          # إعداد مسارات الـ SDK لجودو 3
           cat > ~/.config/godot/editor_settings.3 << EOF
           export/android/android_sdk_path = "$ANDROID_HOME"
           export/android/debug_keystore = "$(pwd)/debug.keystore"
@@ -80,30 +76,7 @@ jobs:
 
       - name: Build APK
         run: |
-          # محاولة التصدير باستخدام جودو 3
           ./godot3 --export "Android" build/game.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: game-apk
-          path: build/game.apk
-          export_path="build/game.apk"
-          [preset.0.options]
-          package/unique_name="com.mj69077.gamealfajr"
-          package/name="Game Alfajr"
-          architecture/armeabi-v7a=true
-          architecture/arm64-v8a=true
-          keystore/debug="$(pwd)/debug.keystore"
-          keystore/debug_user="androiddebugkey"
-          keystore/debug_password="android"
-          EOF
-
-      - name: Build APK
-        run: |
-          # ملاحظة: أضفت --editor --quit للتأكد من استيراد الملفات قبل التصدير
-          ./godot4 --headless --editor --quit --display-driver headless || true
-          ./godot4 --headless --export-release "Android" build/game.apk --display-driver headless
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
