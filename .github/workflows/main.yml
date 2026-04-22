@@ -11,17 +11,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Fix Paths
+      - name: Unzip and Move Files
         run: |
-          # 1. فك الضغط
+          # 1. فك الضغط عن ملف Kk
           unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
           
-          # 2. البحث عن ملف project.godot في أي مكان ونقل كل محتوياته هنا
-          find . -name "project.godot" -execdir cp -r ./* $GITHUB_WORKSPACE/ \; || true
+          # 2. نقل الملفات من المجلد الداخلي للمسار الرئيسي
+          if [ -d "Pixel-Platformer-master" ]; then
+            echo "Moving files from Pixel-Platformer-master..."
+            cp -r Pixel-Platformer-master/* ./
+          else
+            echo "Folder Pixel-Platformer-master not found, searching..."
+            # بحث احتياطي في حال كان الاسم مختلف قليلاً
+            PROJECT_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
+            if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
+               cp -r "$PROJECT_DIR"/* ./
+            fi
+          fi
           
-          # 3. التأكد من وجود الملف في المكان الصحيح
-          if [ -f "project.godot" ]; then echo "Project file found!"; else echo "Project file MISSING!"; exit 1; fi
-          
+          # 3. التأكد من وجود الملف الأساسي
+          ls -F
           mkdir -p build
 
       - name: Setup Java
