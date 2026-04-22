@@ -11,26 +11,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Force Move
+      - name: Unzip and Move
         run: |
-          # فك الضغط في مجلد مستقل
-          unzip -o Kk.zip -d extracted_files || unzip -o Kk -d extracted_files || true
-          
-          # البحث عن ملف المشروع ونقله فوراً للجذر
-          PROJECT_FILE=$(find extracted_files -name "project.godot" | head -n 1)
-          if [ -n "$PROJECT_FILE" ]; then
-            PROJECT_DIR=$(dirname "$PROJECT_FILE")
-            echo "Moving files from $PROJECT_DIR to root..."
+          unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
+          PROJECT_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
+          if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
             cp -r "$PROJECT_DIR"/* ./
-          else
-            echo "!! ERROR: project.godot not found anywhere !!"
-            exit 1
           fi
-          
-          # التأكد من وجود المجلدات المطلوبة
           mkdir -p build
 
-      - name: Setup Java
+      - name: Setup Java & Android SDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -39,23 +29,24 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Download Godot
+      - name: Download Godot & Templates
         run: |
           wget -q https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_linux_headless.64.zip
           unzip -q Godot_v3.5.3-stable_linux_headless.64.zip
-          chmod +x Godot_v3.5.3-stable_linux_headless.64
-
-      - name: Download Export Templates
-        run: |
           mkdir -p ~/.local/share/godot/templates/3.5.3.stable
           wget -q https://github.com/godotengine/godot/releases/download/3.5.3-stable/Godot_v3.5.3-stable_export_templates.tpz
           unzip -q Godot_v3.5.3-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/templates/3.5.3.stable/
 
-      - name: Create Force Export Presets
+      - name: Configure Godot Path
         run: |
-          # حذف أي ملف قديم وإنشاء واحد جديد ونظيف تماماً
-          rm -f export_presets.cfg
+          # إخبار جودو بمكان الـ Android SDK يدوياً
+          mkdir -p ~/.config/godot/
+          echo 'export/android/android_sdk_path = "/usr/local/lib/android/sdk"' > ~/.config/godot/editor_settings.3
+          echo 'export/android/debug_keystore = ""' >> ~/.config/godot/editor_settings.3
+
+      - name: Create Export Presets
+        run: |
           cat > export_presets.cfg << 'EOF'
           [preset.0]
           name="Android"
@@ -68,13 +59,12 @@ jobs:
           package/name="Game Alfajr"
           package/signed=false
           package/architecture_2=true
-          package/architecture_3=true
           EOF
 
-      - name: Build APK (Detailed Logs)
+      - name: Build APK
         run: |
-          # محاولة البناء مع إظهار التفاصيل -verbose
-          ./Godot_v3.5.3-stable_linux_headless.64 --verbose --export "Android" build/game.apk || echo "Build failed, but continuing to check logs..."
+          # هنا جودو سيحاول التصدير، وإذا فشل سيتوقف الـ Action تماماً لنعرف السبب
+          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
