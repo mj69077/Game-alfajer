@@ -1,4 +1,4 @@
-name: Build Android APK (Godot 4 Complete Fix)
+name: Build Android APK (Godot 4 Absolute Fix)
 
 on:
   push:
@@ -11,18 +11,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Cleanup Folders
+      - name: Unzip and Cleanup
         run: |
-          # 1. فك الضغط في مجلد مؤقت
           unzip -o Kk.zip -d temp_files || unzip -o Kk -d temp_files || true
-          
-          # 2. البحث عن ملف المشروع ونقل محتوياته فقط (بدون المجلد الفرعي)
           PROJECT_DIR=$(find temp_files -name "project.godot" -printf '%h\n' | head -n 1)
           if [ -n "$PROJECT_DIR" ]; then
             cp -r "$PROJECT_DIR"/* ./
           fi
-          
-          # 3. حذف المجلدات الزائدة عشان جودو ميتلخبطش
           rm -rf temp_files Pixel-Platformer-master
           mkdir -p build
 
@@ -47,46 +42,44 @@ jobs:
           unzip -q Godot_v4.3-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.3.stable/
 
-      - name: Create Debug Keystore
+      - name: Configure Godot Editor Settings
         run: |
+          # هذه الخطوة هي التي تحل خطأ "Configuration Errors"
+          mkdir -p ~/.config/godot/
+          cat > ~/.config/godot/editor_settings-4.tre << EOF
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/debug_keystore = "$(pwd)/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          # إنشاء الكيستور المطلوب للإعدادات
           keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999
 
-      - name: Create Perfect Export Presets
+      - name: Create Export Presets
         run: |
           cat > export_presets.cfg << EOF
           [preset.0]
           name="Android"
           platform="Android"
           runnable=true
-          dedicated_server=false
-          custom_features=""
           export_filter="all_resources"
           include_filter=""
           exclude_filter=""
           export_path="build/game.apk"
           [preset.0.options]
-          custom_template/debug=""
-          custom_template/release=""
           package/unique_name="com.mj69077.gamealfajr"
           package/name="Game Alfajr"
           architecture/armeabi-v7a=true
           architecture/arm64-v8a=true
-          architecture/x86=false
-          architecture/x86_64=false
           keystore/debug="$(pwd)/debug.keystore"
           keystore/debug_user="androiddebugkey"
           keystore/debug_password="android"
-          keystore/release=""
-          keystore/release_user=""
-          keystore/release_password=""
           EOF
-
-      - name: Import Assets
-        run: |
-          ./godot4 --headless --editor --quit --display-driver headless || true
 
       - name: Build APK
         run: |
+          # ملاحظة: أضفت --editor --quit للتأكد من استيراد الملفات قبل التصدير
+          ./godot4 --headless --editor --quit --display-driver headless || true
           ./godot4 --headless --export-release "Android" build/game.apk --display-driver headless
 
       - name: Upload APK
