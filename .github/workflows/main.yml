@@ -11,22 +11,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Organize Files
+      - name: Unzip and Fix Paths
         run: |
-          # فك الضغط ومحاولة استخراج الملفات
+          # 1. فك الضغط
           unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
           
-          # نقل الملفات للجذر إذا كانت داخل مجلد فرعي
-          PROJECT_FILE=$(find . -name "project.godot" | head -n 1)
-          if [ -n "$PROJECT_FILE" ]; then
-            PROJECT_DIR=$(dirname "$PROJECT_FILE")
-            if [ "$PROJECT_DIR" != "." ]; then
-              cp -r "$PROJECT_DIR"/* ./
-            fi
-          fi
+          # 2. البحث عن ملف project.godot في أي مكان ونقل كل محتوياته هنا
+          find . -name "project.godot" -execdir cp -r ./* $GITHUB_WORKSPACE/ \; || true
           
-          # إنشاء ملفات الإعدادات الضرورية لـ Godot
-          touch .gdignore
+          # 3. التأكد من وجود الملف في المكان الصحيح
+          if [ -f "project.godot" ]; then echo "Project file found!"; else echo "Project file MISSING!"; exit 1; fi
+          
           mkdir -p build
 
       - name: Setup Java
@@ -53,7 +48,6 @@ jobs:
 
       - name: Create Export Presets
         run: |
-          # كتابة ملف الإعدادات مع التأكد من الصيغة
           cat > export_presets.cfg << 'EOF'
           [preset.0]
           name="Android"
@@ -61,7 +55,6 @@ jobs:
           runnable=true
           export_filter="all_resources"
           export_path="build/game.apk"
-          patch_list=PoolStringArray(  )
           [preset.0.options]
           package/unique_name="com.mj69077.gamealfajr"
           package/name="Game Alfajr"
@@ -71,8 +64,7 @@ jobs:
 
       - name: Build APK
         run: |
-          # محاولة التصدير مع تجاهل بعض الأخطاء غير المؤثرة
-          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk || echo "Build stopped, checking logs..."
+          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
