@@ -1,4 +1,4 @@
-name: Build Android APK
+Name: Build Android APK
 
 on:
   push:
@@ -9,6 +9,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      # --- الخطوة الجديدة لفك ضغط ملفات اللعبة ---
+      - name: Unzip Game Files
+        run: |
+          unzip -o Kk.zip -d ./
+          # تأكد أن "game.zip" هو الاسم الصحيح للملف الذي رفعته
+          # إذا كانت الملفات داخل مجلد فرعي بعد الفك، انقلها للجذر:
+          # mv Pixel-Platformer-master/* ./ || true 
+      # ---------------------------------------
 
       - name: Setup Java
         uses: actions/setup-java@v3
