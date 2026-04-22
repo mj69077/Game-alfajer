@@ -60,8 +60,8 @@ jobs:
           [preset.0.options]
           custom_package/debug=""
           custom_package/release=""
-          package/unique_name="com.sg3.pixelplatformer"
-          package/name="Pixel Platformer"
+          package/unique_name="com.mj69077.gamealfajr"
+          package/name="Game Alfajr"
           package/signed=false
           EOF
 
@@ -72,40 +72,6 @@ jobs:
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
-        with:
-          name: game-apk
-          path: build/game.apk
-          package/unique_name="com.sg3.pixelplatformer"
-          package/name="Pixel Platformer"
-          package/signed=false
-          EOF
-
-      - name: Build APK
-        run: |
-          mkdir -p build
-          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4 # الحل هنا: التحديث للإصدار v4
-        with:
-          name: game-apk
-          path: build/game.apk
-          script_export_mode=1
-          [preset.0.options]
-          custom_package/debug=""
-          custom_package/release=""
-          package/unique_name="com.sg3.pixelplatformer"
-          package/name="Pixel Platformer"
-          package/signed=false
-          EOF
-
-      - name: Build APK
-        run: |
-          mkdir -p build
-          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
         with:
           name: game-apk
           path: build/game.apk
