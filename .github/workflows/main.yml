@@ -1,23 +1,30 @@
-Name: Build Android APK
+name: Build Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main ] # تم الضبط ليعمل على فرع main
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-      # --- الخطوة الجديدة لفك ضغط ملفات اللعبة ---
-      - name: Unzip Game Files
+      - name: Unzip and Organize Files
         run: |
-          unzip -o Kk.zip -d ./
-          # تأكد أن "game.zip" هو الاسم الصحيح للملف الذي رفعته
-          # إذا كانت الملفات داخل مجلد فرعي بعد الفك، انقلها للجذر:
-          # mv Pixel-Platformer-master/* ./ || true 
-      # ---------------------------------------
+          # فك ضغط الملف Kk (سواء كان بلاحقة .zip أو بدون)
+          unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
+          
+          # البحث عن ملف project.godot ونقل محتوياته للمسار الرئيسي إذا كان داخل مجلد فرعي
+          if [ ! -f "project.godot" ]; then
+            SUB_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
+            if [ -n "$SUB_DIR" ] && [ "$SUB_DIR" != "." ]; then
+              mv "$SUB_DIR"/* ./
+            fi
+          fi
+          # عرض الملفات للتأكد من وجود project.godot في الجذر
+          ls -F
 
       - name: Setup Java
         uses: actions/setup-java@v3
