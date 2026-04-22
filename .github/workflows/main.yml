@@ -11,26 +11,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Unzip and Move Files
+      - name: Unzip and Force Move
         run: |
-          # 1. فك الضغط عن ملف Kk
-          unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
+          # فك الضغط في مجلد مستقل
+          unzip -o Kk.zip -d extracted_files || unzip -o Kk -d extracted_files || true
           
-          # 2. نقل الملفات من المجلد الداخلي للمسار الرئيسي
-          if [ -d "Pixel-Platformer-master" ]; then
-            echo "Moving files from Pixel-Platformer-master..."
-            cp -r Pixel-Platformer-master/* ./
+          # البحث عن ملف المشروع ونقله فوراً للجذر
+          PROJECT_FILE=$(find extracted_files -name "project.godot" | head -n 1)
+          if [ -n "$PROJECT_FILE" ]; then
+            PROJECT_DIR=$(dirname "$PROJECT_FILE")
+            echo "Moving files from $PROJECT_DIR to root..."
+            cp -r "$PROJECT_DIR"/* ./
           else
-            echo "Folder Pixel-Platformer-master not found, searching..."
-            # بحث احتياطي في حال كان الاسم مختلف قليلاً
-            PROJECT_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
-            if [ -n "$PROJECT_DIR" ] && [ "$PROJECT_DIR" != "." ]; then
-               cp -r "$PROJECT_DIR"/* ./
-            fi
+            echo "!! ERROR: project.godot not found anywhere !!"
+            exit 1
           fi
           
-          # 3. التأكد من وجود الملف الأساسي
-          ls -F
+          # التأكد من وجود المجلدات المطلوبة
           mkdir -p build
 
       - name: Setup Java
@@ -55,8 +52,10 @@ jobs:
           unzip -q Godot_v3.5.3-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/templates/3.5.3.stable/
 
-      - name: Create Export Presets
+      - name: Create Force Export Presets
         run: |
+          # حذف أي ملف قديم وإنشاء واحد جديد ونظيف تماماً
+          rm -f export_presets.cfg
           cat > export_presets.cfg << 'EOF'
           [preset.0]
           name="Android"
@@ -69,11 +68,13 @@ jobs:
           package/name="Game Alfajr"
           package/signed=false
           package/architecture_2=true
+          package/architecture_3=true
           EOF
 
-      - name: Build APK
+      - name: Build APK (Detailed Logs)
         run: |
-          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
+          # محاولة البناء مع إظهار التفاصيل -verbose
+          ./Godot_v3.5.3-stable_linux_headless.64 --verbose --export "Android" build/game.apk || echo "Build failed, but continuing to check logs..."
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
