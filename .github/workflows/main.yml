@@ -2,38 +2,34 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ main ] # تم الضبط ليعمل على فرع main
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # تحديث للإصدار v4
 
       - name: Unzip and Organize Files
         run: |
-          # فك ضغط الملف Kk (سواء كان بلاحقة .zip أو بدون)
           unzip -o Kk.zip -d ./ || unzip -o Kk -d ./ || true
-          
-          # البحث عن ملف project.godot ونقل محتوياته للمسار الرئيسي إذا كان داخل مجلد فرعي
           if [ ! -f "project.godot" ]; then
             SUB_DIR=$(find . -name "project.godot" -printf '%h\n' | head -n 1)
             if [ -n "$SUB_DIR" ] && [ "$SUB_DIR" != "." ]; then
               mv "$SUB_DIR"/* ./
             fi
           fi
-          # عرض الملفات للتأكد من وجود project.godot في الجذر
           ls -F
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4 # تحديث للإصدار v4
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
+        uses: android-actions/setup-android@v3 # تحديث للإصدار v3
 
       - name: Download Godot
         run: |
@@ -60,6 +56,25 @@ jobs:
           include_filter=""
           exclude_filter=""
           export_path="build/game.apk"
+          script_export_mode=1
+          [preset.0.options]
+          custom_package/debug=""
+          custom_package/release=""
+          package/unique_name="com.sg3.pixelplatformer"
+          package/name="Pixel Platformer"
+          package/signed=false
+          EOF
+
+      - name: Build APK
+        run: |
+          mkdir -p build
+          ./Godot_v3.5.3-stable_linux_headless.64 --export "Android" build/game.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4 # الحل هنا: التحديث للإصدار v4
+        with:
+          name: game-apk
+          path: build/game.apk
           script_export_mode=1
           [preset.0.options]
           custom_package/debug=""
